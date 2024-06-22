@@ -11,11 +11,11 @@ const register = async (req, res) => {
   }
 
   try {
-    const [user] = await dbConnection.query(
-      "select userId,userName from users where userName = ? or email = ?",
+    const result = await dbConnection.query(
+      "select userId,userName from users where userName = $1 or email = $2",
       [username, email]
     );
-    if (user.length > 0) {
+    if (result.rows.length > 0) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ msg: "User already exists" });
@@ -25,7 +25,7 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     await dbConnection.query(
-      "insert into users (userName, firstName, lastName, email, password) values (?, ?, ?, ?, ?)",
+      "insert into users (userName, firstName, lastName, email, password) values ($1, $2, $3, $4, $5)",
       [username, firstname, lastname, email, hashedPassword]
     );
     return res
@@ -49,23 +49,23 @@ const login = async (req, res) => {
   }
 
   try {
-    const [user] = await dbConnection.query(
-      "select userId,userName,password from users where email = ?",
+    const result = await dbConnection.query(
+      "select userId,userName,password from users where email = $1",
       [email]
     );
-    if (user.length === 0) {
+    if (result.rows.length === 0) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ msg: "Invalid credentials" });
     }
-    const isMatch = await bcrypt.compare(password, user[0].password);
+    const isMatch = await bcrypt.compare(password, result.rows[0].password);
     if (!isMatch) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ msg: "Invalid credentials" });
     }
     const token = jwt.sign(
-      { userId: user[0].userId, userName: user[0].userName },
+      { userId: result.rows[0].userid, userName: result.rows[0].username },
       process.env.JWT_SECRET,
       { expiresIn: "2h" }
     );
@@ -84,7 +84,7 @@ const checkUser = (req, res) => {
   const { userId, userName } = req.user;
   res
     .status(StatusCodes.OK)
-    .json({ msg: "valid user", userName: userName, userId: userId });
+    .json({ msg: "valid user", userId: userId, userName: userName });
 };
 
 module.exports = { register, login, checkUser };

@@ -3,12 +3,12 @@ const dbConnection = require("../db/dbConfig");
 const { v4: uuid } = require("uuid");
 async function allQuestions(req, res) {
   try {
-    const [questions] = await dbConnection.query(
+    const result = await dbConnection.query(
       "SELECT id,questionId,title,tags,userName FROM questions join users on users.userId = questions.userId order by questions.id desc"
     );
     res
       .status(StatusCodes.OK)
-      .json({ msg: "Questions fetched successfully", questions });
+      .json({ msg: "Questions fetched successfully", questions: result.rows });
   } catch (error) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       msg: "Something went wrong",
@@ -19,8 +19,8 @@ async function allQuestions(req, res) {
 async function singleQuestion(req, res) {
   const { id } = req.query;
   try {
-    const [question] = await dbConnection.query(
-      "SELECT * FROM questions WHERE questionId = ?",
+    const result = await dbConnection.query(
+      "SELECT * FROM questions WHERE questionId = $1",
       [id]
     );
     // if (question.length == 0) {
@@ -30,7 +30,7 @@ async function singleQuestion(req, res) {
     // }
     return res.status(StatusCodes.OK).json({
       msg: "Question fetched successfully",
-      question,
+      question: result.rows,
     });
   } catch (error) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
@@ -44,7 +44,7 @@ async function ask(req, res) {
   const questionId = uuid();
   try {
     await dbConnection.query(
-      "insert into questions (questionId,userId,title,description,tags) values (?,?,?,?,?)",
+      "insert into questions (questionId,userId,title,description,tags) values ($1,$2,$3,$4,$5)",
       [questionId, userId, title, description, tags]
     );
     res
